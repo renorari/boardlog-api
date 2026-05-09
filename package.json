@@ -1,0 +1,39 @@
+{
+  "name": "boardlog-api",
+  "version": "1.0.0",
+  "description": "",
+  "private": true,
+  "license": "GPL-3.0-only",
+  "author": "Renorari",
+  "type": "commonjs",
+  "main": "main.ts",
+  "scripts": {
+    "start": "node main.ts",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
+    "prisma:generate": "prisma generate",
+    "prisma:migrate": "prisma migrate dev",
+    "prisma:studio": "prisma studio --browser=none"
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "^7.8.0",
+    "@prisma/client": "^7.8.0",
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "pg": "^8.20.0",
+    "redis": "^5.12.1"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^24.12.3",
+    "@types/pg": "^8.20.0",
+    "eslint": "^10.3.0",
+    "globals": "^17.6.0",
+    "jiti": "^2.7.0",
+    "prisma": "^7.8.0",
+    "typescript-eslint": "^8.59.2"
+  },
+  "engines": {
+    "node": ">=24.0.0"
+  }
+}
