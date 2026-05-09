@@ -6,3 +6,21 @@ generator client {
 datasource db {
   provider = "postgresql"
 }
+
+model Room {
+  id        String   @id @default(cuid())
+  code      String   @unique
+  createdAt DateTime @default(now())
+  images    Image[]
+}
+
+model Image {
+  id        String   @id @default(cuid())
+  roomId    String
+  room      Room     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  filename  String
+  path      String
+  createdAt DateTime @default(now())
+
+  @@index([roomId, createdAt])
+}
