@@ -33,7 +33,9 @@ Keep files in the following locations:
 | Directory | Purpose |
 |---|---|
 | `main.ts` | Application entry point. |
+| `routes/` | Resource-based route handlers (e.g. `rooms.ts`). |
 | `utils/` | Shared utilities (`db.ts`, `logger.ts`, `middlewares/`). |
+| `constants/` | Shared constants (e.g. `IMAGE_DIR`). |
 | `prisma/` | Prisma schema and migrations. |
 | `generated/prisma/` | **Generated** Prisma Client output. Import from here. Do not commit. |
 | `eslint/` | Custom ESLint plugin rules. |

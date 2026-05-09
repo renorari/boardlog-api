@@ -24,6 +24,8 @@
 | キャッシュ/一時保存 | Redis |
 | ファイルストレージ | ローカルファイルシステム（`/var/whiteboard-images/`） |
 | 画像変換 | sharp（HEIC → JPEG 変換用） |
+| ファイルアップロード | multer（multipart/form-data 受信） |
+| ZIP生成 | yazl |
 | リアルタイム通知 | SSE（Server-Sent Events） |
 
 ### 2.2 データベーススキーマ（Prisma）
@@ -63,10 +65,10 @@ model Image {
 |---------|------|------|
 | POST | `/api/rooms` | ルーム作成（code生成または指定） |
 | GET | `/api/rooms/:code` | ルーム情報取得 |
-| POST | `/api/rooms/:code/images` | **保存用**画像アップロード（HEIC、永続保存） |
-| POST | `/api/rooms/:code/live` | **ライブ用**画像アップロード（HEIC、Redis一時保存） |
+| POST | `/api/rooms/:code/images` | **保存用**画像アップロード（`multipart/form-data`、フィールド名 `image`） |
+| POST | `/api/rooms/:code/live` | **ライブ用**画像アップロード（`multipart/form-data`、フィールド名 `image`） |
 | GET | `/api/rooms/:code/live` | **ライブ用**最新画像取得（Redisから直近2秒のHEIC） |
-| GET | `/api/rooms/:code/images` | 保存画像一覧取得（時系列、ページネーション） |
+| GET | `/api/rooms/:code/images` | 保存画像一覧取得（時系列降順、`?page` `&limit`、デフォルト limit=20、最大100） |
 | GET | `/api/rooms/:code/images/:id` | 単一画像取得（`?format=jpeg` でHEIC→JPEG変換） |
 | GET | `/api/rooms/:code/download` | 全画像ZIP一括ダウンロード（JPEG変換済み） |
 | GET | `/api/rooms/:code/events` | SSEエンドポイント（新画像通知） |
@@ -76,7 +78,7 @@ model Image {
 
 #### 保存用（0.1fps / 10秒間隔）
 ```
-1. iOSアプリから HEIC（1080p/4K）を POST /api/rooms/:code/images
+1. iOSアプリから HEIC（1080p/4K）を multipart/form-data（フィールド名: image）で POST /api/rooms/:code/images
 2. APIサーバーが /var/whiteboard-images/{roomId}/ にファイル保存
 3. PostgreSQLにメタデータ（path, createdAt）を記録
 4. SSEで接続中の表示端末に "new_image" イベントをブロードキャスト
@@ -85,7 +87,7 @@ model Image {
 
 #### ライブ用（0.5fps / 2秒間隔）
 ```
-1. iOSアプリから HEIC（1080p、品質0.8）を POST /api/rooms/:code/live
+1. iOSアプリから HEIC（1080p、品質0.8）を multipart/form-data（フィールド名: image）で POST /api/rooms/:code/live
 2. APIサーバーが Redis key: live:{roomCode} に上書き保存（TTL=10s）
 3. SSEで接続中の表示端末に "live_update" イベントをブロードキャスト
 4. 表示端末はイベント受信後、GET /api/rooms/:code/live でHEICを取得
@@ -204,6 +206,7 @@ Connection: keep-alive
 
 | イベント名 | 送信タイミング | ペイロード例 |
 |-----------|--------------|-------------|
+| `connected` | SSE接続確立時 | `{"type":"connected"}` |
 | `new_image` | 保存用画像がアップロードされた時 | `{"type":"new_image","id":"xxx","timestamp":"2026-05-08T11:30:00Z"}` |
 | `live_update` | ライブ用画像がアップロードされた時 | `{"type":"live_update","timestamp":"2026-05-08T11:30:00Z"}` |
 | `ping` | 接続維持用（30秒間隔） | `{"type":"ping"}` |
