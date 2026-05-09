@@ -8,7 +8,7 @@ import fs from "node:fs";
 import { prisma } from "./db.ts";
 import log from "./logger.ts";
 
-const logger = log.getLogger("cleanup");
+const logger = log.getLogger();
 
 export function startCleanupJob() {
     // Run every day at 3:00 AM
