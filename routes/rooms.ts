@@ -232,10 +232,15 @@ router.get("/:code/images/:id", async (req: Request, res: Response) => {
         }
 
         const format = req.query.format;
-        if (format === "jpeg") {
-            const converted = await sharp(image.path)
-                .jpeg()
-                .toBuffer();
+        const width = req.query.width ? Number(req.query.width) : undefined;
+        const height = req.query.height ? Number(req.query.height) : undefined;
+        if (format === "jpeg" || width || height) {
+            let pipeline = sharp(image.path);
+            if (width || height) {
+                pipeline = pipeline.resize(width, height, { "fit": "inside", "withoutEnlargement": true });
+            }
+            pipeline = pipeline.jpeg();
+            const converted = await pipeline.toBuffer();
             res.setHeader("Content-Type", "image/jpeg");
             res.send(converted);
             return;
