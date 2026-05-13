@@ -235,15 +235,19 @@ router.get("/:code/images/:id", async (req: Request, res: Response) => {
         const width = req.query.width ? Number(req.query.width) : undefined;
         const height = req.query.height ? Number(req.query.height) : undefined;
         if (format === "jpeg" || width || height) {
-            let pipeline = sharp(image.path);
-            if (width || height) {
-                pipeline = pipeline.resize(width, height, { "fit": "inside", "withoutEnlargement": true });
+            try {
+                let pipeline = sharp(image.path, { "failOn": "none" });
+                if (width || height) {
+                    pipeline = pipeline.resize(width, height, { "fit": "inside", "withoutEnlargement": true });
+                }
+                pipeline = pipeline.jpeg();
+                const converted = await pipeline.toBuffer();
+                res.setHeader("Content-Type", "image/jpeg");
+                res.send(converted);
+                return;
+            } catch {
+                // HEIF/HEIC not supported by this sharp build, fall through to serve original
             }
-            pipeline = pipeline.jpeg();
-            const converted = await pipeline.toBuffer();
-            res.setHeader("Content-Type", "image/jpeg");
-            res.send(converted);
-            return;
         }
 
         res.setHeader("Content-Type", "image/heic");
@@ -284,7 +288,7 @@ router.get("/:code/download", async (req: Request, res: Response) => {
         for (const image of images) {
             if (!fs.existsSync(image.path)) continue;
             try {
-                const jpegBuffer = await sharp(image.path)
+                const jpegBuffer = await sharp(image.path, { "failOn": "none" })
                     .jpeg()
                     .toBuffer();
                 const entryName = `${image.id}.jpg`;
