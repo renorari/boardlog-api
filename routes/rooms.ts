@@ -6,6 +6,7 @@ import express from "express";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
+import convert from "heic-convert";
 import sharp from "sharp";
 import yazl from "yazl";
 
@@ -236,17 +237,28 @@ router.get("/:code/images/:id", async (req: Request, res: Response) => {
         const height = req.query.height ? Number(req.query.height) : undefined;
         if (format === "jpeg" || width || height) {
             try {
-                let pipeline = sharp(image.path, { "failOn": "none" });
+                let buffer = await fs.promises.readFile(image.path);
+                // heic-convert -> sharp
+                if (image.path.toLowerCase().endsWith(".heic")) {
+                    buffer = Buffer.from(await convert({
+                        "buffer": buffer,
+                        "format": "JPEG",
+                        "quality": 0.92
+                    }));
+                }
+                let pipeline = sharp(buffer, { "failOn": "none" });
                 if (width || height) {
                     pipeline = pipeline.resize(width, height, { "fit": "inside", "withoutEnlargement": true });
                 }
-                pipeline = pipeline.jpeg();
+                if (image.path.toLowerCase().endsWith(".heic") || format === "jpeg") {
+                    pipeline = pipeline.jpeg();
+                }
                 const converted = await pipeline.toBuffer();
                 res.setHeader("Content-Type", "image/jpeg");
                 res.send(converted);
                 return;
-            } catch {
-                // HEIF/HEIC not supported by this sharp build, fall through to serve original
+            } catch (err) {
+                logger.warn(`Failed to convert image ${image.id}, serving original`, err);
             }
         }
 
@@ -290,10 +302,15 @@ router.get("/:code/download", async (req: Request, res: Response) => {
             if (!fs.existsSync(image.path)) continue;
             try {
                 const data = await fs.promises.readFile(image.path);
-                zipfile.addBuffer(data, `${image.id}.heic`);
+                const converted = await convert({
+                    "buffer": data,
+                    "format": "JPEG",
+                    "quality": 0.92
+                });
+                zipfile.addBuffer(Buffer.from(converted), `${image.id}.jpg`);
                 addedCount++;
             } catch (err) {
-                logger.warn(`Failed to read image ${image.id}`, err);
+                logger.warn(`Failed to convert image ${image.id}`, err);
             }
         }
 
