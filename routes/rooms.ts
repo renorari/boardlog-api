@@ -285,23 +285,31 @@ router.get("/:code/download", async (req: Request, res: Response) => {
         const zipfile = new yazl.ZipFile();
         zipfile.outputStream.pipe(res);
 
+        let addedCount = 0;
         for (const image of images) {
             if (!fs.existsSync(image.path)) continue;
             try {
-                const jpegBuffer = await sharp(image.path, { "failOn": "none" })
-                    .jpeg()
-                    .toBuffer();
-                const entryName = `${image.id}.jpg`;
-                zipfile.addBuffer(jpegBuffer, entryName);
-            } catch {
-                logger.warn(`Failed to convert image ${image.id}`);
+                const data = await fs.promises.readFile(image.path);
+                zipfile.addBuffer(data, `${image.id}.heic`);
+                addedCount++;
+            } catch (err) {
+                logger.warn(`Failed to read image ${image.id}`, err);
             }
+        }
+
+        if (addedCount === 0) {
+            // パイプ済みなのでレスポンスを強制終了
+            zipfile.end();
+            res.destroy();
+            return;
         }
 
         zipfile.end();
     } catch (err) {
         logger.error("GET /api/rooms/:code/download error", err);
-        res.status(500).json({ "error": "Failed to download images" });
+        if (!res.headersSent) {
+            res.status(500).json({ "error": "Failed to download images" });
+        }
     }
 });
 
